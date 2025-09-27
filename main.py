@@ -5,12 +5,15 @@ author: Jelena Půžová
 email: elenabaskova19@gmail.com
 """
 
-import requests
 import sys
 import csv
+
+import requests
 from bs4 import BeautifulSoup
 
+
 # Checking arguments
+
 
 if len(sys.argv) != 3:
     print("Error: You must provide exactly two arguments.")
@@ -28,7 +31,9 @@ if not OUTPUT_FILE.endswith(".csv"):
     print("ERROR: The second argument must be a .csv file!")
     sys.exit(1)
 
+
 # Server response
+
 
 def get_server_response(url):
     response = requests.get(url)
@@ -39,6 +44,7 @@ def get_server_response(url):
 
 # Extract all municipalities in České Budějovice district
 
+
 def get_municipality_links():
     soup = get_server_response(DISTRICT_URL)
     if not soup:
@@ -47,10 +53,14 @@ def get_municipality_links():
     tables = soup.find_all("table", class_="table")[:3]
     municipalities = extract_municipalities_from_tables(tables)
 
-    print(f" There are {len(municipalities)} municipalities in České Budějovice district.")
+    print(
+        f" There are {len(municipalities)} municipalities in České Budějovice district."
+    )
     return municipalities
 
+
 # Extract municipalities details from the tables
+
 
 def extract_municipalities_from_tables(tables):
     municipalities = {}
@@ -71,9 +81,13 @@ def extract_municipalities_from_tables(tables):
 
     return municipalities
 
+
 # Extract results for a specific municipality
 
-def extract_municipality_results(municipality_url, municipality_code, municipality_name):
+
+def extract_municipality_results(
+    municipality_url, municipality_code, municipality_name
+):
     print(f"⬇️ Extracting data for: {municipality_name} ({municipality_code})")
 
     soup = get_server_response(municipality_url)
@@ -84,14 +98,25 @@ def extract_municipality_results(municipality_url, municipality_code, municipali
 
     # Voters data extraction
     registered_voters, envelopes_issued, valid_votes = extract_voter_data(tables)
-    print(f"{municipality_name}: {registered_voters} voters, {envelopes_issued} envelopes, {valid_votes} votes")
+    print(
+        f"{municipality_name}: {registered_voters} voters, {envelopes_issued} envelopes, {valid_votes} votes"
+    )
 
     # Party votes extraction
     party_votes = extract_party_votes(tables)
 
-    return [municipality_code, municipality_name, registered_voters, envelopes_issued, valid_votes, party_votes]
+    return [
+        municipality_code,
+        municipality_name,
+        registered_voters,
+        envelopes_issued,
+        valid_votes,
+        party_votes,
+    ]
+
 
 # Extract voter statistics from the first table
+
 
 def extract_voter_data(tables):
     if not tables or len(tables[0].find_all("tr")) <= 2:
@@ -106,7 +131,9 @@ def extract_voter_data(tables):
         clean_text(columns[7].text) if len(columns) > 7 else "-",
     )
 
+
 # Extract party votes from the tables
+
 
 def extract_party_votes(tables):
     party_votes = {}
@@ -123,30 +150,38 @@ def extract_party_votes(tables):
 
     return party_votes if party_votes else {"No data": "0"}
 
+
 # Data cleaning: Removing non-breaking spaces
+
 
 def clean_text(text):
     return text.strip().replace("\u00a0", "")
+
 
 # Saving results to CSV
 
 CSV_HEADERS = ["Code", "Location", "Voters", "Envelopes issued", "Valid votes"]
 
+
 def save_results_to_csv(results, filename, party_names):
     headers = CSV_HEADERS + sorted(party_names)
-    
+
     with open(filename, mode="w", encoding="utf-8", newline="") as csv_file:
         writer = csv.writer(csv_file, delimiter=";")
         writer.writerow(headers)
         for result in results:
             municipality_data = result[:5]
             votes = result[5]
-            row = municipality_data + [votes.get(party, "0") for party in sorted(party_names)]
+            row = municipality_data + [
+                votes.get(party, "0") for party in sorted(party_names)
+            ]
             writer.writerow(row)
 
     print(f" CSV file '{filename}' was saved successfully.")
 
+
 # Running the scraper
+
 
 def main():
     print(f"⬇️ Scraping data for: {DISTRICT_URL}")
@@ -157,8 +192,13 @@ def main():
     all_results = []
     all_party_names = set()
 
-    for municipality_code, (municipality_name, municipality_url) in municipalities.items():
-        results = extract_municipality_results(municipality_url, municipality_code, municipality_name)
+    for municipality_code, (
+        municipality_name,
+        municipality_url,
+    ) in municipalities.items():
+        results = extract_municipality_results(
+            municipality_url, municipality_code, municipality_name
+        )
         if isinstance(results[-1], dict):
             all_party_names.update(results[-1].keys())
         all_results.append(results)
@@ -166,5 +206,7 @@ def main():
     all_party_names.discard("-")
     save_results_to_csv(all_results, OUTPUT_FILE, sorted(all_party_names))
 
+
 if __name__ == "__main__":
+
     main()
